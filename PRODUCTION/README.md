@@ -16,8 +16,11 @@ gatk CreateSequenceDictionary --REFERENCE SM_V9.fa
 ## 02 - Mapping <a name="mapping"></a>
 ### Map sequence reads to reference genome
 ```
+# Trim reads (adapters.fa is list of standard illumina adapters)
+bbduk.sh -Xmx30g -in=SAMPLE1_1.fastq.gz -in2=SAMPLE1_2.fastq -out=SAMPLE1_1.fastq.trimmed.gz  -out2=SAMPLE1_2.fastq.trimmed.gz ref=adapters.fa ktrim=r k=23 mink=11 hdist=1 tpe tbo
+
 # Repeat as needed for each read set, for example:
-bwa mem -M -t 6 SM_V9.fa SAMPLE1_1.fastq.gz SAMPLE1_2.fastq.gz | samtools sort -@6 -o SAMPLE1.bam -
+bwa mem -M -t 6 SM_V9.fa SAMPLE1_1.fastq.trimmed.gz SAMPLE1_1.fastq.trimmed.gz | samtools sort -@6 -o SAMPLE1.bam -
 ```
 ### Mark PCR duplicates
 ```
@@ -113,7 +116,7 @@ gatk MergeVcfs --INPUT merged_all_samples.SNPs.filtered.vcf --INPUT merged_all_s
 vcftools --vcf merged_all_samples.filtered.vcf.FL1.vcf --missing-indv --out missing_indv
 
 # Filter out individuals with high rates of missing variant calls
-awk '$6<=0.10' missing_site.imiss | grep -v "MISS" | cut -f1  > retain.samples.list
+awk '$6<=0.10' missing_indv.imiss | grep -v "MISS" | cut -f1  > retain.samples.list
 vcftools --vcf merged_all_samples.filtered.vcf.FL1.vcf --keep retain.samples.list --recode-INFO-all --recode --out merged_all_samples.filtered.vcf.FL1.vcf  
 
 # Calculate per-site missingness rate 
@@ -140,9 +143,26 @@ vcftools --vcf allsites.tagged.vcf --recode --remove-filtered-all --out allsites
 ```
 ### Accessory VCF 2 - Inclusion of S. japonicum isolates
 ```
-# Map and variant call S. japonicum accessions (as above) independently of all other accessions
+# Trim reads, map, variant call and merge calls of S. japonicum accessions (as above) independently of all other accessions
+# Calculate per-site and per-sample missingness
+vcftools --vcf all.SJ.vcf --missing-indv
+vcftools --vcf all.SJ.vcf --missing-site
 
-# 
+# Subset only to variant sites retained in the primary VCF
+bcftools query  -f '%CHROM\t%POS\n' FREEZE.FULLFILTER.vcf > keep.sites
+less out.lmiss | awk '$6<1' | awk '$6>0.75' | cut -f1,2 > highmiss.list
 
-# 
+
+# Compress and index
+bgzip -@ 12 -c FREEZE.FULLFILTER.vcf > mans.vcf.gz
+tabix mans.vcf.gz
+
+bgzip -@ 12 -c all.SJ.F2.vcf > SJ.vcf.gz
+tabix SJ.vcf.gz
+
+# Merge
+bcftools merge --threads 6 -o merged.vcf mans.vcf.gz SJ.vcf.gz
+bcftools view --threads 4 -T keep.sites -o all.SJ.F1.vcf merged.vcf
+bcftools view --threads 4 -t 1,2,3,4,5,6,7 -T^highmiss.list -o all.SJ.F2.vcf all.SJ.F1.vcf
 ```
+
