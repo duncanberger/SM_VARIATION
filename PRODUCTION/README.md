@@ -35,11 +35,11 @@ samtools index SAMPLE1.markdup.merged.bam
 # Create makewindows input
 cut -f1,2 SM_V9.fa.fai > SM_V9.chrom.txt
 
-# Create 25 kb windows
-bedtools makewindows -g SM_V9.chrom.txt -w 25000 > tdSchCurr1.chrom.25kb.bed
+# Create 500 bp windows
+bedtools makewindows -g SM_V9.chrom.txt -w 500 > tdSchCurr1.chrom.500bp.bed
 
 # Calculate per-sample coverage
-bedtools coverage -sorted -g tdSchCurr1.chrom.fa.fai -d -a tdSchCurr1.chrom.25kb.bed -b SAMPLE1.markdup.merged.bam \| datamash -g1,2,3 median 5 mean 5 sstdev 5 > SAMPLE1.cov
+bedtools coverage -sorted -g SM_V9.fa.fai -d -a tdSchCurr1.chrom.500bp.bed -b SAMPLE1.markdup.merged.bam \| datamash -g1,2,3 median 5 mean 5 sstdev 5 > SAMPLE1.cov
 awk '{print $1,$2,$3,$4,$5,$6,FILENAME}' SAMPLE1.cov | sed 's/.cov//g' > SAMPLE1.recov
 cat *.recov > all.recov.txt
 ```
@@ -48,16 +48,16 @@ cat *.recov > all.recov.txt
 ### Per-sampling variant calling
 ```
 samtools index SAMPLE1.markdup.merged.bam
-gatk HaplotypeCaller --emit-ref-confidence GVCF -I SAMPLE1.markdup.merged.bam -R tdSchCurr1.chrom.fa -O SAMPLE1.g.vcf
+gatk HaplotypeCaller --emit-ref-confidence GVCF -I SAMPLE1.markdup.merged.bam -R SM_V9.fa -O SAMPLE1.g.vcf
 ```
 ### Combine all samples into a single gVCF and genotype
 ```
 # Combine gVCFs
 ls | grep 'g.vcf' > argument.list
-gatk CombineGVCFs --arguments_file argument.list --reference tdSchCurr1.chrom.fa --output merged_all_samples.g.vcf
+gatk CombineGVCFs --arguments_file argument.list --reference SM_V9.fa --output merged_all_samples.g.vcf
 
 # Genotype
-gatk GenotypeGVCFs --reference tdSchCurr1.chrom.fa --variant merged_all_samples.g.vcf --output merged_all_samples.vcf
+gatk GenotypeGVCFs --reference SM_V9.fa --variant merged_all_samples.g.vcf --output merged_all_samples.vcf
 ```
 ## 04 - Quality control <a name="qc"></a>
 ### Calculate quality scores for all variant sites
@@ -68,7 +68,7 @@ gatk VariantsToTable --variant merged_all_samples.vcf -F CHROM -F POS -F TYPE -F
 ### Separate and filter SNPs
 ```
 # Select SNPs
-gatk SelectVariants -R tdSchCurr1.chrom.fa --variant merged_all_samples.vcf --select-type-to-include SNP --output merged_all_samples.SNPs.vcf
+gatk SelectVariants -R SM_V9.fa --variant merged_all_samples.vcf --select-type-to-include SNP --output merged_all_samples.SNPs.vcf
 
 # Tag low-quality SNPs
 gatk VariantFiltration \
@@ -79,11 +79,11 @@ gatk VariantFiltration \
 --filter-expression "MQRankSum < -12.5" --filter-name "MQ12.5" \
 --filter-expression "SOR > 3.0" --filter-name "SOR3" \
 --variant merged_all_samples.SNPs.vcf \
--R tdSchCurr1.chrom.fa  \
+-R SM_V9.fa  \
 --output merged_all_samples.SNPs.tagged.vcf
 
 # Remove low-quality sites
-gatk SelectVariants -R tdSchCurr1.chrom.fa --variant merged_all_samples.SNPs.tagged.vcf --exclude-filtered --output merged_all_samples.SNPs.filtered.vcf
+gatk SelectVariants -R SM_V9.fa --variant merged_all_samples.SNPs.tagged.vcf --exclude-filtered --output merged_all_samples.SNPs.filtered.vcf
 ```
 ### Separate and filter indels and mixed sites
 ```
@@ -97,11 +97,11 @@ gatk SelectVariants -R tdSchCurr1.chrom.fa --variant merged_all_samples.vcf --se
 --filter-expression "ReadPosRankSum < -20.0" --filter-name "RPRS20" \
 --filter-expression "SOR > 10.0" --filter-name "SOR10" \
 --variant merged_all_samples.indels_mixed.vcf \
--R tdSchCurr1.chrom.fa  \
+-R SM_V9.fa  \
 --output merged_all_samples.indels_mixed.tagged.vcf
 
 # Remove low-quality sites
-gatk SelectVariants -R tdSchCurr1.chrom.fa --variant merged_all_samples.indels_mixed.tagged.vcf --exclude-filtered --output merged_all_samples.indels_mixed.filtered.vcf
+gatk SelectVariants -R SM_V9.fa --variant merged_all_samples.indels_mixed.tagged.vcf --exclude-filtered --output merged_all_samples.indels_mixed.filtered.vcf
 ```
 ### Recombine filtered variants
 ```
