@@ -9,20 +9,15 @@
 ## 01 - Raw data <a name="raw"></a>
 ### Reference genome
 ```
-# Remove unplaced contigs
-samtools faidx tdSchCurr1.primary.fa
-grep -v 'UNPLACED' tdSchCurr1.primary.fa.fai | cut -f1 > include.list
-seqtk subseq tdSchCurr1.primary.fa include.list > tdSchCurr1.chrom.fa
-
 # Create indexes and a sequence dictionary for the reference genome
-bwa index tdSchCurr1.chrom.fa
-gatk CreateSequenceDictionary --REFERENCE tdSchCurr1.chrom.fa
+bwa index SM_V9.fa
+gatk CreateSequenceDictionary --REFERENCE SM_V9.fa
 ```
 ## 02 - Mapping <a name="mapping"></a>
 ### Map sequence reads to reference genome
 ```
 # Repeat as needed for each read set, for example:
-bwa mem -t 6 tdSchCurr1.chrom.fa SAMPLE1_1.fastq.gz SAMPLE1_2.fastq.gz | samtools sort -@6 -o SAMPLE1.bam -
+bwa mem -M -t 6 SM_V9.fa SAMPLE1_1.fastq.gz SAMPLE1_2.fastq.gz | samtools sort -@6 -o SAMPLE1.bam -
 ```
 ### Mark PCR duplicates
 ```
@@ -38,10 +33,10 @@ samtools index SAMPLE1.markdup.merged.bam
 ### Calculate coverage
 ```
 # Create makewindows input
-cut -f1,2 tdSchCurr1.chrom.fa.fai > tdSchCurr1.chrom.txt
+cut -f1,2 SM_V9.fa.fai > SM_V9.chrom.txt
 
 # Create 25 kb windows
-bedtools makewindows -g tdSchCurr1.chrom.txt -w 25000 > tdSchCurr1.chrom.25kb.bed
+bedtools makewindows -g SM_V9.chrom.txt -w 25000 > tdSchCurr1.chrom.25kb.bed
 
 # Calculate per-sample coverage
 bedtools coverage -sorted -g tdSchCurr1.chrom.fa.fai -d -a tdSchCurr1.chrom.25kb.bed -b SAMPLE1.markdup.merged.bam \| datamash -g1,2,3 median 5 mean 5 sstdev 5 > SAMPLE1.cov
