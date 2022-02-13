@@ -113,7 +113,7 @@ gatk MergeVcfs --INPUT merged_all_samples.SNPs.filtered.vcf --INPUT merged_all_s
 vcftools --vcf merged_all_samples.filtered.vcf.FL1.vcf --missing-indv --out missing_indv
 
 # Filter out individuals with high rates of missing variant calls
-awk '$6<0.55' missing_site.imiss | grep -v "MISS" | cut -f1  > retain.samples.list
+awk '$6<=0.10' missing_site.imiss | grep -v "MISS" | cut -f1  > retain.samples.list
 vcftools --vcf merged_all_samples.filtered.vcf.FL1.vcf --keep retain.samples.list --recode-INFO-all --recode --out merged_all_samples.filtered.vcf.FL1.vcf  
 
 # Calculate per-site missingness rate 
@@ -126,4 +126,23 @@ vcftools --vcf merged_all_samples.filtered.vcf.FL1.vcf --postions retain.variant
 ### Move final versions of VCFs to the analysis folder
 ```
 mv merged_all_samples.filtered.vcf.FL2.vcf FREEZE.FULLFILTER.vcf
+```
+### Accessory VCF 1 - Input for PIXY
+```
+# Produce an allsites VCF
+gatk GenotypeGVCFs --reference SM_V9.fa --variant merged_all_samples.g.vcf --output merged_all_samples.IV.vcf --include-non-variant-sites
+
+# Hard filter
+java -Xmx25G -jar gatk-package-4.2.0.0-local.jar VariantFiltration --filter-expression "ReadPosRankSum < -8.0" --filter-name RPRS8 --filter-expression "QD < 2.0" --filter-name QD2 --filter-expression "FS > 60.0" --filter-name FS60 --filter-expression "MQ < 40.0" --filter-name MQ40 --filter-expression "MQRankSum < -12.5" --filter-name MQ12.5 --filter-expression "SOR > 3.0" --filter-name SOR3 --variant merged_all_samples.IV.vcf -R SM_V9.fa --output allsites.tagged.vcf
+
+# Second hard filter (pass.list = list of accessions retained during production of non-accessory VCF)
+vcftools --vcf allsites.tagged.vcf --recode --remove-filtered-all --out allsites.filt1.vcf --remove-indels --max-missing 0.8 --min-meanDP 5 --max-meanDP 500 --hwe 0.001 --mac 1 --keep pass.list
+```
+### Accessory VCF 2 - Inclusion of S. japonicum isolates
+```
+# Map and variant call S. japonicum accessions (as above) independently of all other accessions
+
+# 
+
+# 
 ```
