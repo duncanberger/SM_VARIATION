@@ -183,4 +183,21 @@ smoove paste --name cohort results-genotyped/*.vcf.gz
 
 # Annotate SVs
 smoove annotate --gff SM_V9.gff cohort.smoove.square.vcf.gz | bgzip -c > cohort.smoove.square.anno.vcf.gz
+
+# Filter Smoove SV calls
+slivar expr \
+  --info "variant.call_rate > 0.25 && ((INFO.SVTYPE == 'DEL') ||
+(INFO.SVTYPE == 'DUP'))" \
+  --sample-expr \
+    "LQHET:sample.alts == 1 && (((sample.DHFFC > 0.75) && (INFO.SVTYPE
+== 'DEL')) || ((sample.DHFFC < 1.25) && INFO.SVTYPE == 'DUP'))" \
+  --sample-expr \
+    "HQHET:sample.alts == 1 && (((sample.DHFFC < 0.75) && (INFO.SVTYPE
+== 'DEL')) || ((sample.DHFFC > 1.25) && INFO.SVTYPE == 'DUP'))" \
+  --sample-expr \
+    "HQHA:sample.alts == 2 && (((sample.DHFFC < 0.5) && (INFO.SVTYPE
+== 'DEL')) || ((sample.DHFFC > 1.5) && INFO.SVTYPE == 'DUP'))" \
+  -o cohort.smoove.square.anno.filt.vcf \
+  --vcf cohort.smoove.square.anno.vcf.gz
 ```
+ 
