@@ -4,10 +4,8 @@
 1. [Population Structure](#pca)
 2. [Admixture statistics](#admix)
 3. [Sample relatedness](#kinship)
-4. [](#mito)
-5. [](#fixed)
-6. [](#cont)
-7. [](#rep)
+4. [Smoove SV analyses](#smoove)
+5. [Variant within Smp_246790](#TRP)
 
 ## 01 - Population structure <a name="pca"></a>
 ### 
@@ -215,4 +213,11 @@ plink --bfile autosomes_pruned --allow-extra-chr --make-bed --recodeA --out inpu
 
 # Move to R and run Sequoia. 
 ```
-
+## 03 - Smoove SV analyses <a name="smoove"></a>
+### Smoove
+```
+```
+## 03 - Variantion within Smp_246790 <a name="TRP"></a>
+### 
+```
+```
