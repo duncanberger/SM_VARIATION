@@ -216,9 +216,12 @@ plink --bfile autosomes_pruned --allow-extra-chr --make-bed --recodeA --out inpu
 ## 04 - Smoove SV analyses <a name="smoove"></a>
 ### Smoove
 ```
-
+# Filter SV's for deletions, filter further on columns 1&2 to get deletions within specific regions.
+bcftools query -f '[%CHROM\t%POS\t%REF\t%ALT\t%SAMPLE\t%GT\t%SVLEN\t%END\t%SHQ\t%MSHQ\t%DHFFC\n]' cohort.smoove.square.anno.filt.vcf |awk '$6!="0/0"' | awk '$5!="./."' | grep -v INV | grep DEL | awk '$10>3' | awk '$11<0.7' | awk '$7>-600000' | awk '$6!="./."' > deletions.pass.txt
 ```
 ## 05 - Variation within Smp_246790 <a name="TRP"></a>
 ### 
 ```
+# Find mutations within Smp_246790
+cat FREEZE.FULLFILTER.pruned.autosomes.vcf | vcfEffOnePerLine.pl | java -jar SnpSift.jar extractFields - CHROM POS REF ALT AF "EFF[*].EFFECT" "ANN[*].GENEID" "EFF[*].IMPACT" "ANN[*].FEATUREID" "ANN[*].HGVS_C" "ANN[*].RANK" | grep "Smp_246790." | grep -e HIGH -e MODERATE -e LOW > FI.mutations.txt
 ```
