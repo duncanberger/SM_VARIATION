@@ -5,7 +5,8 @@
 2. [Mapping](#mapping)
 3. [Variant calling](#variantcalling)
 4. [Quality control](#qc)
-5. [Smoove SV calling](#smoove)
+5. [SnpEff annotation](#snpeff)
+6. [Smoove SV calling](#smoove)
 
 ## 01 - Raw data <a name="raw"></a>
 ### Reference genome
@@ -153,7 +154,6 @@ vcftools --vcf all.SJ.vcf --missing-site
 bcftools query  -f '%CHROM\t%POS\n' FREEZE.FULLFILTER.vcf > keep.sites
 less out.lmiss | awk '$6<1' | awk '$6>0.75' | cut -f1,2 > highmiss.list
 
-
 # Compress and index
 bgzip -@ 12 -c FREEZE.FULLFILTER.vcf > mans.vcf.gz
 tabix mans.vcf.gz
@@ -165,6 +165,18 @@ tabix SJ.vcf.gz
 bcftools merge --threads 6 -o merged.vcf mans.vcf.gz SJ.vcf.gz
 bcftools view --threads 4 -T keep.sites -o all.SJ.F1.vcf merged.vcf
 bcftools view --threads 4 -t 1,2,3,4,5,6,7 -T^highmiss.list -o all.SJ.F2.vcf all.SJ.F1.vcf
+```
+## 04 - SnpEff annotation <a name="snpeff"></a>
+### 
+```
+# Normalize variants 
+bcftools norm -f SM_V9.fa --threads 12 -m - -o ALL.normed.vcf FREEZE.FULLFILTER.vcf
+
+# Build database (assuming you have files in the right directories)
+java -jar snpEff.jar build -c snpEff.config -gtf22 SM_V9
+
+# Annotate
+java -jar snpEff.jar SM_V9 ALL.normed.vcf > all.snpeff.vcf
 ```
 ## 04 - Smoove SV calling <a name="smoove"></a>
 ### 
