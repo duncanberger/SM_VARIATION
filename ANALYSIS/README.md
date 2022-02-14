@@ -1,17 +1,15 @@
 # Analysis
 
 ## Table of contents
-1. [](#AQC)
-2. [Population Structure](#pca)
-3. [Admixture statistics](#admix)
-4. [](#admix2)
-5. [](#mito)
-6. [](#fixed)
-7. [](#cont)
-8. [](#rep)
+1. [Population Structure](#pca)
+2. [Admixture statistics](#admix)
+3. [](#admix2)
+4. [](#mito)
+5. [](#fixed)
+6. [](#cont)
+7. [](#rep)
 
-## 01 - Assembly QC <a name="AQC"></a>
-## 02 - Population structure <a name="pca"></a>
+## 01 - Population structure <a name="pca"></a>
 ### 
 ```
 # Convert vcf to plink .bed format, select autosomes. 
@@ -24,12 +22,6 @@ plink2 --bfile autosomes_unfiltered --allow-extra-chr --set-all-var-ids @_# --ex
 ### Principal component analysis
 ```
 plink2 --bfile prunedData --allow-extra-chr --set-all-var-ids @_# --pca
-```
-### Neighbour-joining phylogeny
-```
-# Produce a distance matrix
-plink2 --bfile prunedData --allow-extra-chr --set-all-var-ids @_# --distance square 1-ibs
-paste <( cut -f2 prunedData_tree.mdist.id) prunedData_tree.mdist | cat <(cut -f2 prunedData_tree.mdist.id | tr '\n' '\t' | sed -e '1s/^/\t/g') - > autosomes.mdist
 ```
 ### Maximum likelihood phylogeny
 ```
@@ -70,159 +62,78 @@ cat *.Q > admixture_all.txt
 # Get a table of CV scores, found in the stdout files (in our case *.o files)
 cat *.o | grep CV | cut -f2 -d "=" | sed 's/)://g' | tr ' ' '\t' > cv_scores.txt
 ```
+### Population diversity and differentiation
+```
+# Subset the allsites VCF for each chromosome (e.g Chr 1)
+bcftools view -t 1 -o allsites.filt1.1.vcf allsites.filt1.vcf
+
+# Run PIXY (pop.list = list of populations to be evaluated/compared, repeat for each CHR)
+pixy --stats fst dxy pi 
+--vcf allsites.filt1.1.vcf
+--zarr_path zarr/ 
+--window_size 5000
+--populations pop.list
+--variant_filter_expression 'DP>=10,GQ>=20,RGQ>=20' 
+--invariant_filter_expression 'DP>=10,RGQ>=20' 
+--outfile_prefix output/pixy.5000.pop.CHR
+```
 ## 03 - Admixture statistics <a name="admix"></a>
-### Count heterozygous variants
+### Identify fixed S. rodhaini alleles
 ```
-# Make a VCF with biallelic SNPs only
-bcftools view --min-ac 2 --types snps --max-ac 2 -o FREEZE.FULLFILTER.biallelic_snps.vcf FREEZE.FULLFILTER.vcf
+# Get a list of non-admixed S. mansoni samples (showing zero/near-zero S. rodhaini admixture) and create lists for each population S. japonicum, S. rodhaini etc.
 
-# Get a list of SNPs per site per sample
-bcftools query -f '[%CHROM\t%POS\t%SAMPLE\t%GT\n]' FREEZE.FULLFILTER.biallelic_snps.vcf > all_snps.list
-grep -e "0\/1" -e "0|1" all_snps.list > het_snps.list
+# Calculate allele frequencies for 3 population: non-admixed Ugandan samples, non-admixed non-Ugandan samples, S. rodhaini samples). 
+plink2 --vcf FREEZE.FULLFILTER.vcf --chr SM_V9_1, SM_V9_2, SM_V9_3, SM_V9_4, SM_V9_5, SM_V9_6, SM_V9_7, SM_V9_PAR1, SM_V9_PAR2 --make-bed --allow-extra-chr --set-all-var-ids @_# --out CHR_all
+plink2 --bfile CHR_all --keep not_admixed.list --freq --out na_1.test --set-all-var-ids @_#
+plink2 --bfile CHR_all --keep not_admixed_outgroup.list --freq --out na_2.test --set-all-var-ids @_#
+plink2 --bfile CHR_all --keep rodhaini.list --freq --out na_3.test --set-all-var-ids @_#
 
-# Make a bed file (50 kb windows)
-samtools faidx tdSchCurr1.primary.fa
-bedtools makewindows -g tdSchCurr1.primary.fa.fai -w 50000 > 50kb.bed
-
-# Merge SNP list and bed file
-bedtools intersect -wb -a all_snps.list -b 50kb.bed | sed 's/|/\//g' | cut -f4,5,6,7,8,9 | awk '{print "A",$2,$3,$4,$5,$6}' | tr ' ' '\t' | sort -k2,2 -k3,3 -k4,4 | datamash -g2,3,4,5 count 1 | tr '\t' '-' > all.count.bed
-
-bedtools intersect -wb -a het_snps.list -b 50kb.bed | sed 's/|/\//g' | cut -f4,5,6,7,8,9 | awk '{print "A",$2,$3,$4,$5,$6}' | tr ' ' '\t' | sort -k2,2 -k3,3 -k4,4 | datamash -g2,3,4,5 count 1 | tr '\t' '-' > het.count.bed
-
-# Combine all SNP counts and heterozygous SNPs only counts
-join <(sort all.count.bed) <(sort het.count.bed) -e0 -a1 -o auto | sed 's/-/ /g' | sed 's/ / /g' > merged.hets.all.txt
+# Identify sites fixed in S. rodhaini, and at low/zero frequency in non-admixed populations
+less na_1.test.afreq | awk '$5<0.1' | cut -f2 > X1.list
+less na_2.test.afreq | awk '$5==0' | cut -f2 > X2.list
+less na_3.test.afreq | awk '$5==1' | cut -f2 > X3.list
+cat X1.list X2.list X3.list | sort | uniq -c | awk '$1==3' | tr -s ' ' | sed 's/^ //g' | tr ' ' '\t' | cut -f2 | tr '_' '\t' > pSR.alleles.txt
 ```
-### *f*3
+### *f*3 
 ```
-# Make a zarr file
+# Subset VCF to only include fixed S. rodhaini alleles
+bcftools view -T pSR.alleles.txt -o merged.sub.vcf FREEZE.FULLFILTER.vcf
+
+# Make zarr file
 python make_zarr.py
 
-# Per window
-python f3_stats.py
-
-# Overall
-python f3_sum.py
+# Run calculate f3
+python f3.py
 ```
 ### Patterson's D
 ```
-# Per window
-python d_stats.py
+# Subset VCF file to include only autosomes
+bcftools view -t SM_V9_1,SM_V9_2,SM_V9_3,SM_V9_4,SM_V9_5,SM_V9_6,SM_V9_7 -o FREEZE.FULLFILTER.autosomes.vcf FREEZE.FULLFILTER.vcf
 
-# Overall
-python d_sum.py
-```
-### NEWHYBRIDS
-```
-# Subset VCF to keeep only sites with no missingness
-bcftools view -i 'F_MISSING<0.1' FREEZE.FULLFILTER.biallelic_snps.vcf > FREEZE.FULLFILTER.biallelic_snps.nomiss.vcf
-bcftools query -f '[%CHROM\t%POS\t%SAMPLE\t%GT\n]' FREEZE.FULLFILTER.biallelic_snps.nomiss.vcf > all_snps.nomiss.list
+# Calculate Pattersons D for combinations of trios, (for each population, admixed/non-admixed)
+Dsuite Dtrios FREEZE.FULLFILTER.autosomes.vcf ds.list
 
-# Make random subsets of all variants
-parallel "cut -f1,2 all_snps.nomiss.list | sort | uniq | shuf > head -200 > subset.{}.txt" ::: 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15
+# Calculate D and f4 statistics for specified trios
+Dsuite Dinvestigate -w 10,1 FREEZE.FULLFILTER.autosomes.vcf input.list trios3.list
+Dsuite Dinvestigate -w 5,1 FREEZE.FULLFILTER.autosomes.vcf input.list trios3.list
+Dsuite Dinvestigate -w 50,25 FREEZE.FULLFILTER.autosomes.vcf input.list trios3.list
+```
+### ancestry_hmm
+```
+# Create a VCF with no missing sites, keeping only biallelic sutes
+bcftools view -m2 -M2  -i 'F_MISSING=0' -o ALL.nomiss.vcf FREEZE.FULLFILTER.autosomes.vcf
 
-# Make a new subset VCF
-parallel "bcftools view -T subset.{}.txt -o subset.{}.vcf FREEZE.FULLFILTER.biallelic_snps.nomiss.vcf" ::: 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15
+# Create a list of sites not in linkage disequilibrium (see plink method above)
 
-# Convert to NEWHYBRIDS format
-parallel "java -Xmx1024m -Xms512m -jar PGDSpider2-cli.jar -inputfile subset.{}.vcf -inputformat VCF -outputfile subset.{}.newhybrids -outputformat NEWHYBRIDS -spid all.spid" ::: 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15
+# Subset VCF to only include unlinked sites, repeat for each population
+bcftools view -T unlinked.sites -s pop.list -o ALL.nomiss.pruned.POP1.vcf ALL.nomiss.vcf
 
-# Run NEWHYBRIDS for each subset, e.g.:
-newhybs --no-gui -d subset.1.newhybrids --num-sweeps 500000 --burn-in 150000 --seeds 15 22
-```
-## 04 - Windowed admixture <a name="admix2"></a>
-### 50 kb window
-```
-# Prune variants and exclude samples we don't want to analyse
-plink2 --vcf FREEZE.FULLFILTER.vcf --chr CHR_1, CHR_2, CHR_3, CHR_4, CHR_5, CHR_6, CHR_7, CHR_Z --make-bed --allow-extra-chr --set-all-var-ids @_# --out autosomes_unfiltered --keep keep.list
+# Convert to ahmm format (*.master files describe target and reference populations), repeat for each subpopulation. 
+python vcf2ahmm.py -v ALL.nomiss.pruned.POP1.vcf -s POP1.master -g 1 --min_total 1 -r 4.0953e-8 -o POP1 > POP1.input
 
-# Remove variants in strong linkage disequilibrium
-plink2 --bfile autosomes_unfiltered --allow-extra-chr --set-all-var-ids @_# --indep-pairwise 50 10 0.15
-plink2 --bfile autosomes_unfiltered --allow-extra-chr --set-all-var-ids @_# --extract autosomes_unfiltered.prune.in --out prunedData --make-bed
-
-# Using the 50 kb windows from 03, make bed files for each 50 kb window in parallel, keeping only those samples you want to analyse (or use as reference populations)
-parallel --dry-run --colsep '\t' "plink2 --bfile prunedData --chr {1} --from-bp {2} --to-bp {3} --make-bed --out {1}_{2}_{3} --allow-extra-chr" :::: 50kb.bed
-
-# So for example the first command would be:
-plink2 --bfile prunedData --chr 1 --from-bp 0 --to-bp 50000 --make-bed --out 1_0_50000 --allow-extra-chr
-ls | grep bed | cut -f1 -d "." > bed.list
-
-# Run ADMIXTURE
-parallel "admixture -j1 {}.bed --cv 2" :::: bed.list
-
-# Merge runs
-parallel --dry-run "awk '{print \$1,\$2,FILENAME}' {} | sed 's/.2.Q//g' | tr '_' '\t' > {}.X" ::: *.Q
-cat *.X > all_admix_50kb.txt
+# Run a_hmm (repeat for each parameter and subpopulation)
+ancestry_hmm -i POP1.input -s POP1 -a 2 0.01 0.99 -p 0 -30 0.10 -p 1 200000 1 -b 1000 1000 --tmin 0 --tmax 100000 --ne 65000 > POP1.log
 ```
-### 1 Mb windows
+### Sprime
 ```
-# Make windows
-bedtools makewindows -g tdSchCurr1.primary.fa.fai -w 1000000 -s 500000 > 1Mb.bed
-
-# Make bed files
-parallel --dry-run --colsep '\t' "plink2 --bfile prunedData --chr {1} --from-bp {2} --to-bp {3} --make-bed --out {1}_{2}_{3} --allow-extra-chr" :::: 1Mb.bed
-ls | grep bed | cut -f1 -d "." > bed.list
-
-# Run ADMIXTURE
-parallel "admixture -j1 {}.bed --supervised --cv 2" :::: bed.list
-
-# Merge runs
-parallel --dry-run "awk '{print \$1,\$2,FILENAME}' {} | sed 's/.2.Q//g' | tr '_' '\t' > {}.X" ::: *.Q
-cat *.X > all_admix_1Mb.txt
-```
-## 05 - Mitochondrial genome analysis <a name="mito"></a>
-### Make a PCA plot
-```
-# Convert vcf to plink .bed format, select autosomes. 
-plink2 --vcf FREEZE.MITO.vcf --make-bed --allow-extra-chr --set-all-var-ids @_# --out mito_unfiltered
-```
-### Principal component analysis
-```
-plink2 --bfile mito_unfiltered --allow-extra-chr --set-all-var-ids @_# --pca
-```
-### Neighbour-joining phylogeny
-```
-# Produce a distance matrix
-plink2 --bfile mito_unfiltered --allow-extra-chr --set-all-var-ids @_# --distance square 1-ibs
-paste <( cut -f2 prunedData_tree.mdist.id) prunedData_tree.mdist | cat <(cut -f2 prunedData_tree.mdist.id | tr '\n' '\t' | sed -e '1s/^/\t/g') - > mito.mdist
-```
-### Admixture
-```
-#Fix scaffold names in bim file (ADMIXTURE accepts numerical scaffold names only)
-sed -i 's/CHR_//g' mito_unfiltered.bim
-
-# Run ADMIXTURE of values of K:1-20, using 10 randomly generated seeds.
-# There is no way of renaming admixture output based on seed value, so to avoid overwriting output files for each seed replicate, run in their own directory or batch run each seed one at a time. 
-admixture -j2 --seed={1} -B1000 mito_unfiltered.bed {2} --cv=10
-```
-## 06 - Fixed differences <a name="fixed"></a>
-```
-# Print a table of genotypes per sample
-bcftools query -f '%CHROM\t%POS\t%REF\t%ALT[\t%GT]\n' FREEZE.FULLFILTER.biallelic_snps.vcf | sed 's/|/\//g' > query.txt
-
-# Identify sites fixed homozygous ref or alt in *S. bovis* and *S. curassoni* samples
-cat query.txt | awk '$5==$16' | awk '$16==$25' | awk '$7==$17' | awk '$17==$21' | awk '$5!="./."' | awk '$7!="./."' | awk '$5!=$7' | grep -v Z > fix.difs.txt
-```
-## 07 - Contamination QC <a name="cont"></a>
-```
-# Get genotypes and allelic depths for all heterozygous sites
-bcftools query -f '[%CHROM\t%POS\t%SAMPLE\t%GT\t%AD\n]' FREEZE.FULLFILTER.biallelic_snps.vcf | sed 's/|/\//g' | awk '$4=="0/1"' | tr ',' '\t' > AD.all.txt
-```
-## 08 - Repeat Masking <a name="rep"></a>
-### Analyse repeat content
-```
-# Model repeats
-RepeatModeler -database tdSchCurr1 -pa 10 -LTRStruct -genomeSampleSizeMax 500000000
-
-# Mask repeats
-RepeatMasker -pa 10 -a -s -gff -lib tdSchCurr1-families.fa -dir custom/ -xsmall tdSchCurr1.primary.fa
-
-# Make a bed file
-bedtools makewindows -g tdSchCurr1.primary.fa.fai -w 1000000 > 1Mb.bed
-
-# Pick specific types of repeat (e.g. Penelope repeats):
-cat tdSchCurr1.primary.fa.out | grep Penelope | tr -s ' ' | sed 's/^ //g' | sed 's/ / /g' | cut -f5,6,7 > Penelope.bed
-bedtools intersect -wo -a 1mb.bed -b <( grep -v UNPLACED Penelope.bed | grep -v MITO | sed 's/CHR_//g') | cut -f1,2,3,7 | datamash -g1,2,3 sum 4 | sed 's/$/ PENNY/g' > penny-count.temp
-
-# Merge all repeat types
-*-count.temp > rep_features.bed
 ```
