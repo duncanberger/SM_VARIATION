@@ -136,4 +136,30 @@ ancestry_hmm -i POP1.input -s POP1 -a 2 0.01 0.99 -p 0 -30 0.10 -p 1 200000 1 -b
 ```
 ### Sprime
 ```
+# Subset for each chromosome
+bcftools view -t SM_V9_1 -o ALL.nomiss.1.vcf ALL.nomiss.vcf
+
+# Phase variants use genetic map generated using uniform per-chromosome recombination rate
+java -jar beagle.28Sep18.793.jar gt=ALL.nomiss.1.vcf out=ALL.nomiss.1.beagle map=1_fixed.gmap nthreads=4 iterations=30 burnin=10 ne=65000
+
+# Run Sprime (outgroup.txt=list of non-admixed samples, excl.pop=list of samples not to be analysed)
+java -jar sprime.jar gt=ALL.nomiss.1.beagle.vcf outgroup=outgroup.txt map=plink.gmap out=POP1_1_sprime excludesamples=excl.pop chrom=1 mu=8.1e-9
+
+# Create blocks for each group (Chr 1 shown as example)
+cat POP1_1_sprime.score | cut -f1,2,6,7,8 | sort -k3,3 -k1,1 -k2,2nr | awk -F'\t' '!seen[$3]++' > 1.a.test
+cat POP1_1_sprime.score | cut -f1,2,6,7,8 | sort -k3,3 -k1,1 -k2,2n | awk -F'\t' '!seen[$3]++' >> 1.a.test
+cat 1.a.test | sort -k3,3 | awk '{print $3,$1,$2,$4,$5}' | tr ' ' '\t' | awk '{if(a!=$1) {a=$1; printf "\n%s%s",$0,FS} else {a=$1;$1="";printf $0 }} END {printf "\n" }' > 1.a.b.temp
+cat 1.a.b.temp | tr -s ' ' | tr -s '\t' | tr ' ' '\t' | sed 's/$/ gn/g' > POP1.summary
+
+# Calculate genetic distance (Chr 1 shown as example)
+less POP1.summary | cut -f2,3,7,8,9,10 | awk '{print $1,$2,$3,$3-$2,$4,$5,$6}' | tr ' ' '\t' | sort -k4,4 -gr | sed 's/-//g' | grerp "^1" | awk '{print $1,(($4*4.095)/1000000),$2,$3,$4,$5,$6,$7}' | sed 's/ / /g' > chr1.segs.txt
+
+# Repeat for all chromosomes, merge into one file
+cat chr1.segs.txt chr2.segs.txt ... > all.segs.txt
 ```
+
+
+
+
+
+
