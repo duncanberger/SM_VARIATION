@@ -3,7 +3,7 @@
 ## Table of contents
 1. [Population Structure](#pca)
 2. [Admixture statistics](#admix)
-3. [](#admix2)
+3. [Sample relatedness](#kinship)
 4. [](#mito)
 5. [](#fixed)
 6. [](#cont)
@@ -110,7 +110,7 @@ python f3.py
 # Subset VCF file to include only autosomes
 bcftools view -t SM_V9_1,SM_V9_2,SM_V9_3,SM_V9_4,SM_V9_5,SM_V9_6,SM_V9_7 -o FREEZE.FULLFILTER.autosomes.vcf FREEZE.FULLFILTER.vcf
 
-# Calculate Pattersons D for combinations of trios, (for each population, admixed/non-admixed)
+# Calculate Pattersons D for combinations of trios, (for each population, admixed/non-admixed, unrelated samples)
 Dsuite Dtrios FREEZE.FULLFILTER.autosomes.vcf ds.list
 
 # Calculate D and f4 statistics for specified trios
@@ -128,7 +128,7 @@ bcftools view -m2 -M2  -i 'F_MISSING=0' -o ALL.nomiss.vcf FREEZE.FULLFILTER.auto
 # Subset VCF to only include unlinked sites, repeat for each population
 bcftools view -T unlinked.sites -s pop.list -o ALL.nomiss.pruned.POP1.vcf ALL.nomiss.vcf
 
-# Convert to ahmm format (*.master files describe target and reference populations), repeat for each subpopulation. 
+# Convert to ahmm format (*.master files describe target and reference populations, unrelated samples), repeat for each subpopulation. 
 python vcf2ahmm.py -v ALL.nomiss.pruned.POP1.vcf -s POP1.master -g 1 --min_total 1 -r 4.0953e-8 -o POP1 > POP1.input
 
 # Run a_hmm (repeat for each parameter and subpopulation)
@@ -142,7 +142,7 @@ bcftools view -t SM_V9_1 -o ALL.nomiss.1.vcf ALL.nomiss.vcf
 # Phase variants use genetic map generated using uniform per-chromosome recombination rate
 java -jar beagle.28Sep18.793.jar gt=ALL.nomiss.1.vcf out=ALL.nomiss.1.beagle map=1_fixed.gmap nthreads=4 iterations=30 burnin=10 ne=65000
 
-# Run Sprime (outgroup.txt=list of non-admixed samples, excl.pop=list of samples not to be analysed)
+# Run Sprime (outgroup.txt=list of non-admixed samples, excl.pop=list of samples not to be analysed, unrelated samples)
 java -jar sprime.jar gt=ALL.nomiss.1.beagle.vcf outgroup=outgroup.txt map=plink.gmap out=POP1_1_sprime excludesamples=excl.pop chrom=1 mu=8.1e-9
 
 # Create blocks for each group (Chr 1 shown as example)
@@ -176,8 +176,17 @@ less AD0158.proc.merge | cut -f1,2,3,6 | datamash -g1,2,3 sum 4 > counts.txt
 # Merge counts to get proportions of each genotype per window
 join <(sort counts.txt) <(cat AD0158.proc.merge | sed 's/ /_/1' | sed 's/ /_/1' | sort ) | sed 's/_/  /g' > AD0158.final.counts
 ```
-
-
-
-
-
+### Allele frequencies of S. rodhaini alleles in admixed populations
+```
+# Get allele freqencies across admixed populations (unrelated samples)
+plink2 --bfile CHR_all --keep all.admixed.samples.list --freq --out all.admixed.samples --set-all-var-ids @_# --extract <(cat pSR.alleles.txt| tr '\t' '_')
+```
+### Calculate Tajima's D
+```
+# Calculate Tajima's D for each subpopualation (unrelated samples only)
+vcftools --vcf FREEZE.FULLFILTER.vcf --keep POP1.list --TajimaD 5000 --out {2}_TAJIMA_D_POP1_5000
+vcftools --vcf FREEZE.FULLFILTER.vcf --keep POP.list --TajimaD 2500 --out {2}_TAJIMA_D_POP1_2500
+```
+## 02 - Sample relatedness <a name="kinship"></a>
+### Identify fixed S. rodhaini alleles
+```
