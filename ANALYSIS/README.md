@@ -77,7 +77,7 @@ pixy --stats fst dxy pi
 --invariant_filter_expression 'DP>=10,RGQ>=20' 
 --outfile_prefix output/pixy.5000.pop.CHR
 ```
-## 03 - Admixture statistics <a name="admix"></a>
+## 02 - Admixture statistics <a name="admix"></a>
 ### Identify fixed S. rodhaini alleles
 ```
 # Get a list of non-admixed S. mansoni samples (showing zero/near-zero S. rodhaini admixture) and create lists for each population S. japonicum, S. rodhaini etc.
@@ -157,7 +157,25 @@ less POP1.summary | cut -f2,3,7,8,9,10 | awk '{print $1,$2,$3,$3-$2,$4,$5,$6}' |
 # Repeat for all chromosomes, merge into one file
 cat chr1.segs.txt chr2.segs.txt ... > all.segs.txt
 ```
+### Proportions of S. rodhaini alleles per sample
+```
+# Using AD0158 as an example
+# Subsample phased VCF to contain only putative S. rodhaini specific alleles. Using merged beagle variants file. E.g:
+bcftools query -f [%CHROM\\t%POS\\t%SAMPLE\\t%GT\\n] -o AD0158.query.derived -s AD0158 -T pSR.alleles.txt ALL.nomiss.beagle.vcf
+cat AD0158.query.derived | awk '{print \$1,\$2-1,\$2,\$3,\$4}' | sed 's/ /  /g' > AD0158.proc
 
+# Make 2kb windows
+bedtools makewindows -g SM_V9.fa.fai -w 2000 | grep -v MITO | grep -v ZSR | grep -v WSR > 2kb_windows.txt
+
+# Intersect variant counts with windows
+bedtools intersect -wo -a 2kb_windows.txt -b AD0158.proc |cut -f1,2,3,7,8 | sed 's/$/ 1/g' | sort -k1,1 -k2,2n -k4,4 | datamash -g1,2,3,4,5 count 6 > AD0158.proc.merge
+
+# Get counts of variant sites per window
+less AD0158.proc.merge | cut -f1,2,3,6 | datamash -g1,2,3 sum 4 > counts.txt
+
+# Merge counts to get proportions of each genotype per window
+join <(sort counts.txt) <(cat AD0158.proc.merge | sed 's/ /_/1' | sed 's/ /_/1' | sort ) | sed 's/_/  /g' > AD0158.final.counts
+```
 
 
 
