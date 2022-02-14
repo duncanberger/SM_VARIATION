@@ -5,6 +5,7 @@
 2. [Mapping](#mapping)
 3. [Variant calling](#variantcalling)
 4. [Quality control](#qc)
+5. [Smoove SV calling](#smoove)
 
 ## 01 - Raw data <a name="raw"></a>
 ### Reference genome
@@ -39,10 +40,10 @@ samtools index SAMPLE1.markdup.merged.bam
 cut -f1,2 SM_V9.fa.fai > SM_V9.chrom.txt
 
 # Create 500 bp windows
-bedtools makewindows -g SM_V9.chrom.txt -w 500 > tdSchCurr1.chrom.500bp.bed
+bedtools makewindows -g SM_V9.chrom.txt -w 500 > SM_V9.chrom.500bp.bed
 
 # Calculate per-sample coverage
-bedtools coverage -sorted -g SM_V9.fa.fai -d -a tdSchCurr1.chrom.500bp.bed -b SAMPLE1.markdup.merged.bam \| datamash -g1,2,3 median 5 mean 5 sstdev 5 > SAMPLE1.cov
+bedtools coverage -sorted -g SM_V9.fa.fai -d -a SM_V9.chrom.500bp.bed -b SAMPLE1.markdup.merged.bam \| datamash -g1,2,3 median 5 mean 5 sstdev 5 > SAMPLE1.cov
 awk '{print $1,$2,$3,$4,$5,$6,FILENAME}' SAMPLE1.cov | sed 's/.cov//g' > SAMPLE1.recov
 cat *.recov > all.recov.txt
 ```
@@ -66,7 +67,7 @@ gatk GenotypeGVCFs --reference SM_V9.fa --variant merged_all_samples.g.vcf --out
 ### Calculate quality scores for all variant sites
 ```
 # Produce a table of quality scores for each variant site
-gatk VariantsToTable --variant merged_all_samples.vcf -F CHROM -F POS -F TYPE -F QD -F FS -F MQ -F MQRankSum -F ReadPosRankSum -F SOR -F InbreedingCoeff -R tdSchCurr1.chrom.fa --output cohort.genotyped.tbl
+gatk VariantsToTable --variant merged_all_samples.vcf -F CHROM -F POS -F TYPE -F QD -F FS -F MQ -F MQRankSum -F ReadPosRankSum -F SOR -F InbreedingCoeff -R SM_V9.fa --output cohort.genotyped.tbl
 ```
 ### Separate and filter SNPs
 ```
@@ -91,7 +92,7 @@ gatk SelectVariants -R SM_V9.fa --variant merged_all_samples.SNPs.tagged.vcf --e
 ### Separate and filter indels and mixed sites
 ```
 # Select indels and mixed sites
-gatk SelectVariants -R tdSchCurr1.chrom.fa --variant merged_all_samples.vcf --select-type-to-include SNP --output merged_all_samples.indels_mixed.vcf
+gatk SelectVariants -R SM_V9.fa --variant merged_all_samples.vcf --select-type-to-include SNP --output merged_all_samples.indels_mixed.vcf
 
 # Tag low-quality indels and mixed sites
 /lustre/scratch118/infgen/team133/db22/software/gatk-4.1.0.0/gatk VariantFiltration \
@@ -165,4 +166,21 @@ bcftools merge --threads 6 -o merged.vcf mans.vcf.gz SJ.vcf.gz
 bcftools view --threads 4 -T keep.sites -o all.SJ.F1.vcf merged.vcf
 bcftools view --threads 4 -t 1,2,3,4,5,6,7 -T^highmiss.list -o all.SJ.F2.vcf all.SJ.F1.vcf
 ```
+## 04 - Smoove SV calling <a name="smoove"></a>
+### 
+```
+# Call structural variants per-sample (e.g accession MK0037)
+smoove call --outdir results-smoove/ --name MK0037 --fasta SM_V9.fa -p 1 --genotype MK0037.renamed.bam
 
+# Get the union of sites across all samples 
+smoove merge --name merged -f SM_V9.fa --outdir OUT results-smoove/*.genotyped.vcf.gz
+
+# Genotype those sites
+smoove genotype -d -x -p 1 --name sample-joint --outdir results-genotyped/ --fasta SM_V9.fa --vcf merged.sites.vcf.gz MK0037.renamed.bam
+
+# Merge all single-sample VCFs
+smoove paste --name cohort results-genotyped/*.vcf.gz
+
+# Annotate SVs
+smoove annotate --gff SM_V9.gff cohort.smoove.square.vcf.gz | bgzip -c > cohort.smoove.square.anno.vcf.gz
+```
