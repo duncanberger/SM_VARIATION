@@ -213,11 +213,12 @@ plink --bfile autosomes_pruned --allow-extra-chr --make-bed --recodeA --out inpu
 
 # Move to R and run Sequoia. 
 ```
-## 03 - Smoove SV analyses <a name="smoove"></a>
+## 04 - Smoove SV analyses <a name="smoove"></a>
 ### Smoove
 ```
+
 ```
-## 03 - Variantion within Smp_246790 <a name="TRP"></a>
+## 05 - Variation within Smp_246790 <a name="TRP"></a>
 ### 
 ```
 ```
