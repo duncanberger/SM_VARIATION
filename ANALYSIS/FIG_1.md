@@ -79,7 +79,7 @@ pcaz <- ggplot(data=subset(df_3),aes((PC1),(PC2))) +
 #### FIG 1e: Nucleotide diversity
 ```
 # Import PIXY results
-pi_all <- read.table("fig1.pi.txt", header=TRUE)
+pi_all <- read.table("combined.pixy.5000.pop.CHR_pi.txt", header=TRUE)
 
 # Subsample to 5000 windows per-population (for plotting clarity)
 pi_all_subset2 <- pi_all %>% group_by(pop)  %>%  sample_n(size=5000)
@@ -125,8 +125,8 @@ piz <- ggplot(data=pi_all,aes(x=factor(pop, level = level_order),y=log10(avg_pi)
 ```
 #### Figure 1e: Fixation index
 ```
-# Import PIXY results 
-fst_popgen <- read.table("all.nosibs.fst.txt", header=FALSE)
+# Import PIXY results (renamed files)
+fst_popgen <- read.table("combined.pixy.5000.pop.CHR_fst.txt", header=FALSE)
 
 # Subset for each pairs of populations and correct values <0 to 0
 fst_popgen_2 <- subset(fst_popgen, V6!="NaN" & V6!="NA")
