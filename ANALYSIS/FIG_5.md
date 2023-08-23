@@ -2,6 +2,7 @@
 ```
 # Load libraries
 library("ggplot2")
+library("gggenes")
 ```
 ### FIG 5a: Lollipop plots
 ```
