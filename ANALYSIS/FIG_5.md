@@ -7,11 +7,13 @@ library("ggplot2")
 ```
 # Import files
 
-
+# Import domain coordinates in format: NAME|START|STOP
 prots <- read.table("Smp_246790.domains2.txt", header=FALSE, sep="|")
-trp <- read.table("new_allele_counts_trp.txt", header=FALSE, check.names = FALSE)
-freq2 <- read.table("het_freq2.txt", header=FALSE)
 
+# Import allele counts in format: Count (number of samples with allele),genotype,position,label (variant type)
+trp <- read.table("new_allele_counts_trp.txt", header=FALSE, check.names = FALSE, sep=',')
+
+# Plot protein structure diagram (rough)
 X <- ggplot(subset(prots)) +
   geom_gene_arrow(fill = "white", aes(xmin=0,xmax=V3,y=2), 
                   arrow_body_height = unit(4, "mm")) +
@@ -25,6 +27,7 @@ X <- ggplot(subset(prots)) +
         #      axis.text.x = element_blank(),
         axis.ticks = element_blank())
 
+# Plot homozygous allele frequency
 Y <- ggplot() +
   geom_linerange(data=subset(subset(trp, V2=="1/1")),aes(x=as.numeric(V3),ymax=V1/550,ymin=0, color=V4), alpha=0.75) + 
   geom_point(data=subset(subset(trp, V2=="1/1" )), aes(x=as.numeric(V3),y=V1/550, color=V4), size=0.75, alpha=0.75) +
@@ -55,6 +58,7 @@ Y <- ggplot() +
   scale_y_reverse(expand=c(0,0)) +
   ylim(0,1) 
 
+# Plot heterozygous allele frequency
 Z <- ggplot() +
   geom_linerange(data=subset(subset(trp, V2=="1/0" | V2=="0/1")),aes(x=V3,ymax=V1/550,ymin=0, color=V4), alpha=0.75) + 
   geom_point(data=subset(subset(trp, V2=="1/0" | V2=="0/1")), aes(x=V3,y=V1/550, color=V4), size=0.75, alpha=0.75) +
@@ -84,6 +88,7 @@ Z <- ggplot() +
   ylim(0,1) +
   scale_y_reverse(limits=c(1,0)) 
 
+# Combine plots
 plot_grid(Y,X,Z, ncol=1, align="v", axis="l", rel_heights = c(4,1,4))
 ```
 
