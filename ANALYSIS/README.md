@@ -195,7 +195,7 @@ paste <( cut -f2 prunedData_tree.mdist.id) prunedData_tree.mdist | cat <(cut -f2
 ### ngsRelate
 ```
 # Subset to only unlinked variants (method shown above)
-bcftools view -T unlinked.sites -t SM_V9_1,SM_V8_2,SM_V8_3,SM_V9_4,SM_V9_5,SM_V9_6,SM_V9_7 -o FREEZE.FULLFILTER.pruned.autosomes.vcf FREEZE.FULLFILTER.vcf
+bcftools view -T unlinked.sites -t SM_V9_1,SM_V9_2,SM_V9_3,SM_V9_4,SM_V9_5,SM_V9_6,SM_V9_7 -o FREEZE.FULLFILTER.pruned.autosomes.vcf FREEZE.FULLFILTER.vcf
 
 # Run ngsRelate
 ngsRelate -h FREEZE.FULLFILTER.pruned.autosomes.vcf -O all_samples -p 10 
@@ -205,7 +205,7 @@ ngsRelate -h FREEZE.FULLFILTER.pruned.autosomes.vcf -O all_samples -p 10
 ### Sequoia
 ```
 # Subset to only unlinked variants (method shown above)
-bcftools view -T unlinked.sites -t SM_V9_1,SM_V8_2,SM_V8_3,SM_V9_4,SM_V9_5,SM_V9_6,SM_V9_7 -o FREEZE.FULLFILTER.pruned.autosomes.vcf FREEZE.FULLFILTER.vcf
+bcftools view -T unlinked.sites -t SM_V9_1,SM_V9_2,SM_V9_3,SM_V9_4,SM_V9_5,SM_V9_6,SM_V9_7 -o FREEZE.FULLFILTER.pruned.autosomes.vcf FREEZE.FULLFILTER.vcf
 
 # Convert to sequoia friendly input format
 plink2 --vcf FREEZE.FULLFILTER.pruned.autosomes.vcf --make-bed --allow-extra-chr --set-all-var-ids @_# --out autosomes_pruned
