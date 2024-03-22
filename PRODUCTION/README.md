@@ -143,29 +143,6 @@ java -Xmx25G -jar gatk-package-4.2.0.0-local.jar VariantFiltration --filter-expr
 # Second hard filter (pass.list = list of accessions retained during production of non-accessory VCF)
 vcftools --vcf allsites.tagged.vcf --recode --remove-filtered-all --out allsites.filt1.vcf --remove-indels --max-missing 0.8 --min-meanDP 5 --max-meanDP 500 --hwe 0.001 --mac 1 --keep pass.list
 ```
-### Accessory VCF 2 - Inclusion of S. japonicum isolates
-```
-# Trim reads, map, variant call and merge calls of S. japonicum accessions (as above) independently of all other accessions
-# Calculate per-site and per-sample missingness
-vcftools --vcf all.SJ.vcf --missing-indv
-vcftools --vcf all.SJ.vcf --missing-site
-
-# Subset only to variant sites retained in the primary VCF
-bcftools query  -f '%CHROM\t%POS\n' FREEZE.FULLFILTER.vcf > keep.sites
-less out.lmiss | awk '$6<1' | awk '$6>0.75' | cut -f1,2 > highmiss.list
-
-# Compress and index
-bgzip -@ 12 -c FREEZE.FULLFILTER.vcf > mans.vcf.gz
-tabix mans.vcf.gz
-
-bgzip -@ 12 -c all.SJ.F2.vcf > SJ.vcf.gz
-tabix SJ.vcf.gz
-
-# Merge
-bcftools merge --threads 6 -o merged.vcf mans.vcf.gz SJ.vcf.gz
-bcftools view --threads 4 -T keep.sites -o all.SJ.F1.vcf merged.vcf
-bcftools view --threads 4 -t 1,2,3,4,5,6,7 -T^highmiss.list -o all.SJ.F2.vcf all.SJ.F1.vcf
-```
 ## 05 - SnpEff annotation <a name="snpeff"></a>
 ### 
 ```
