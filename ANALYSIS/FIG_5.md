@@ -1,10 +1,10 @@
-# Figure 5
+# Figure 2
 ```
 # Load libraries
 library("ggplot2")
 library("gggenes")
 ```
-### FIG 5a: Lollipop plots
+### FIG 2: Lollipop plots
 ```
 # Import files
 
