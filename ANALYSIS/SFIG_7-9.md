@@ -1,4 +1,4 @@
-# Figure 1
+# Supplementary figures 7-9
 ```
 # Load libraries
 library("phytools")
