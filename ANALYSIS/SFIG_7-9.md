@@ -1,4 +1,17 @@
-tree <- midpoint(read.newick("test.nwk")) 
+# Figure 1
+```
+# Load libraries
+library("phytools")
+library("phangorn")
+library("ape")
+library("ggplot2")
+library("reshape2")
+library("dplyr")
+library("ggtree")
+```
+### Load tree
+```
+tree <- midpoint(read.newick("iqtree.nwk")) 
 
 key <- read.table("890_meta.csv", header=TRUE, sep=",",comment.char = "")
 variants_l <- read.table("phy_variants.csv", sep=",", header=FALSE)
@@ -7,12 +20,12 @@ key2 <- merge(key,variants_l, by.x = c("sample_ID"), by.y = c("V1"), all.y = TRU
 key2$Simple5 <- key2$Simple2
 key2$Simple6 <- ifelse(key2$V2!="1.00", key2$Simple5, NA)
 key3 <- subset(key2, select = -c(sample_ID))
-
-# Plot tree
+```
+### Plot trees
+```
 key2 <- merge(key,variants_l, by.x = c("sample_ID"), by.y = c("V1"), all.y = TRUE, all.x=TRUE)
 key3 <- subset(key2, select = -c(sample_ID))
 
-#1843
 HOM_1843 <- ggtree(tree, layout="ape", aes(color=Simple5), size=0.2) %<+% subset(key3, V3=="p.Arg1843Gln" & V2=="HOM") +
   geom_tippoint(size=0.25)+
   scale_color_manual(values=c("Tororo"="#EE6677","Lake Albert"="#4477AA","Mayuge"="#66CCEE","Rodhaini"="black","SA"="#AA3377","Kenya"="#57d9b3","Tanzania"="#228833",  "Islands"="#CCBB44", "Guadeloupe"="#ff9d00","Senegal"="#aa3377","Puerto Rico"="#6b3702",  "Cameroon"="#e783eb"), na.value="grey90") +
@@ -172,15 +185,9 @@ HET_DEL <- ggtree(tree, layout="ape", aes(color=Simple5), size=0.2) %<+% subset(
   geom_tippoint(size=0.25)+
   scale_color_manual(values=c("Tororo"="#EE6677","Lake Albert"="#4477AA","Mayuge"="#66CCEE","Rodhaini"="black","SA"="#AA3377","Kenya"="#57d9b3","Tanzania"="#228833",  "Islands"="#CCBB44", "Guadeloupe"="#ff9d00","Senegal"="#aa3377","Puerto Rico"="#6b3702",  "Cameroon"="#e783eb"), na.value="grey90") +
   theme(legend.position = "none")
-
-
-R1843Q - Removing charge, coiled coil
-T1624K - Positive charge near binding pocket. 
-Y1554C - which would disrupt a pi-pi stack in the pore helices
-Q1670K - TRP domain, within binding pocket
-
-
-
+```
+### Merge plots
+```
 test_b1 <- plot_grid(HET_102,HOM_102,
           HET_105,HET_105,
           HET_1005,HOM_1005,
@@ -220,7 +227,7 @@ test_b4 <- plot_grid(HET_1,HOM_1,
                    "p.Q1915fs","p.Q1915fs",
                    "~150 kb deletion","~150 kb deletion","REM","REM"), label_size = 8)
 
-
+```
 
 
 
