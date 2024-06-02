@@ -1,4 +1,4 @@
-# Supplementary Figure 5: Functional profiling of Sm.TRPMPZQ variants
+# Supplementary Figure 5: Functional profiling of *Sm*.TRPM<sub>PZQ</sub> variants
 ### Load packages
 ```{r}
 library("dplyr")
