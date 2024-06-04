@@ -17,4 +17,4 @@ Berger, D. (2021). Comparative and population genomic analyses of the parasitic 
 
 ## Data availability
 
-The sequencing data generated in this study have been deposited in the European Nucleotide Archive (ENA) repository under project accession codes: PRJEB42451,PRJEB29904
+The sequencing data generated in this study have been deposited in the European Nucleotide Archive (ENA) repository under project accession codes: PRJEB42451, PRJEB29904
