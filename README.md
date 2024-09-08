@@ -1,5 +1,5 @@
 # Extensive transmission and variation in a functional receptor for praziquantel resistance in endemic *Schistosoma mansoni*
-This repository contains the data and the analysis workflow for the manuscript: ["Extensive transmission and variation in a functional receptor for praziquantel resistance in endemic *Schistosoma mansoni*"](https://www.biorxiv.org/content/10.1101/2024.08.29.610291v2).
+This repository contains the data and the analysis workflow for the manuscript: [Extensive transmission and variation in a functional receptor for praziquantel resistance in endemic *Schistosoma mansoni*](https://www.biorxiv.org/content/10.1101/2024.08.29.610291v2).
 
 The repository is divided into 2 sections:  
 1). Production - containing all the commands used to produce data for analyses.  
